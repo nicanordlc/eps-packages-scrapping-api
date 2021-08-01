@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from bs4 import BeautifulSoup
 from datetime import datetime
-from configparser import ConfigParser, NoOptionError
+from configparser import ConfigParser, NoOptionError, NoSectionError
 from functools import lru_cache
 
 import requests
@@ -21,7 +21,7 @@ app.add_middleware(
 
 #{{{ configparser
 @lru_cache
-def get_config():
+def get_config(_section_config='', _default=''):
     """
     Retrieves configuration and parse it
     """
@@ -33,20 +33,22 @@ def get_config():
         section, option = section_option.split('.')
         try:
             return config.get(section, option)
-        except NoOptionError:
+        except (NoOptionError, NoSectionError):
             return default
 
     config['user']['name'] = config_get('user.name')
     config['user']['password'] = config_get('user.password')
 
+    if _section_config:
+        return config_get(_section_config, _default)
+
     return config
 
 #}}}
 
-#{{{ init session
-config_ini = get_config()
-username = config_ini.get('user', 'name')
-password = config_ini.get('user', 'password')
+#{{{ prepare session
+username = get_config('user.name')
+password = get_config('user.password')
 
 URLS = {
         'login': 'https://app.eps-int.com/login',
@@ -62,14 +64,23 @@ payload = {
         'password': password,
         }
 
+def is_logged_in():
+    """
+    Checks if the user is logged in on the page eps.com.do
+    """
+    cookies = session.cookies.get_dict()
+    return 'WebSite_autologin' in cookies
+
 # login into the session
-session.post(URLS['login'], data=payload)
+def login():
+    """Login to eps.com.do"""
+    session.post(URLS['login'], data=payload)
+
 #}}}
 
 #{{{ constants
 INITIAL_STATE = {
         'items': [],
-        'logged_in': False,
         }
 
 CACHE = {
@@ -98,20 +109,24 @@ def now():
     return get_packages(use_cache=False)
 #}}}
 
-#{{{ utils
+#{{{ get_packages
 def get_packages(use_cache=True):
     """
     Fetch packages from EPS.com into a JSON format
     """
+    if not is_logged_in():
+        login()
+
     clear = False
-    minutes_threshold = 1
     epoch = datetime.now().timestamp()
 
     # elapsed minutes
-    epoch_difference_minutes = abs((CACHE['last_update'] - epoch) / 60)
+    server_cache = float(get_config('server.cache', 30))
+    epoch_difference = abs((CACHE['last_update'] - epoch))
+    epoch_difference_to_minutes = epoch_difference / 60
 
     # if more an hour has passed clean the counter
-    if epoch_difference_minutes > minutes_threshold:
+    if epoch_difference_to_minutes > server_cache:
         CACHE['last_update'] = epoch
         clear = True
 
@@ -121,15 +136,15 @@ def get_packages(use_cache=True):
 
     # fetch home
     if CACHE['home'] and use_cache:
+        log('CACHE: CACHE')
         eps_home = CACHE['home']
     else:
+        log('CACHE: DIRECT')
         eps_home = session.get(URLS['home'])
         CACHE['home'] = eps_home
         CACHE['last_update'] = epoch
 
-    # if you're not logged it is a redirect, just return default state
-    is_logged_out = bool(eps_home.history)
-    if is_logged_out:
+    if not is_logged_in():
         return INITIAL_STATE
 
     # parse html
@@ -141,9 +156,10 @@ def get_packages(use_cache=True):
 
     return {
             'items': package_list,
-            'logged_in': True,
             }
+#}}}
 
+#{{{ transform_package
 def transform_package(soup):
     """
     Parse eps html item into a structure
@@ -181,4 +197,12 @@ def transform_package(soup):
             'statusLabel': status_label,
             'statusFormatted': status_mapper[status],
             }
+#}}}
+
+#{{{ log
+def log(message):
+    """
+    Log message with a predefined format
+    """
+    print(f'[Log]\t  {datetime.now()}\t{message}\n')
 #}}}
