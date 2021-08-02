@@ -17,7 +17,8 @@ Fetches your packages that are in the page `eps.com.do`
             "statusLabel": "intransit",
             "statusFormatted": "customs",
         }
-    ]
+    ],
+    "logged_in": true
 }
 ```
 

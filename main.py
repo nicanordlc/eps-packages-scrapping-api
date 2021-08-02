@@ -114,8 +114,6 @@ def get_packages(use_cache=True):
     """
     Fetch packages from EPS.com into a JSON format
     """
-    if not is_logged_in():
-        login()
 
     clear = False
     epoch = datetime.now().timestamp()
@@ -140,6 +138,7 @@ def get_packages(use_cache=True):
         eps_home = CACHE['home']
     else:
         log('CACHE: DIRECT')
+        login()
         eps_home = session.get(URLS['home'])
         CACHE['home'] = eps_home
         CACHE['last_update'] = epoch
@@ -156,6 +155,7 @@ def get_packages(use_cache=True):
 
     return {
             'items': package_list,
+            'logged_in': is_logged_in(),
             }
 #}}}
 
