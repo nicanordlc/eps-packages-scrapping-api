@@ -6,6 +6,7 @@ from configparser import ConfigParser, NoOptionError, NoSectionError
 from functools import lru_cache
 
 import requests
+import traceback
 
 #{{{ init fast api
 app = FastAPI()
@@ -173,17 +174,23 @@ def transform_package(soup):
             'status5': 'available',
             }
 
+    def get_first(arr):
+        if bool(len(arr)):
+            return arr[0]
+        return ''
+
     try:
         # attributes
         groups = soup['data-groups']
         _, status, status_label = groups.split()
-        condition = soup.find(class_='packagecondition').contents[0]
-        tracking_number = soup.find(class_='trackingnumber').contents[0]
-        content = soup.find(class_='packagecontent').contents[0]
-        sender = soup.find(class_='packagesender').contents[0]
-        weight = soup.find(class_='packageweight').contents[0]
-    except:
-        # return empty item
+        condition = get_first(soup.find(class_='packagecondition').contents)
+        tracking_number = get_first(soup.find(class_='trackingnumber').contents)
+        content = get_first(soup.find(class_='packagecontent').contents)
+        sender = get_first(soup.find(class_='packagesender').contents)
+        weight = get_first(soup.find(class_='packageweight').contents)
+    except Exception as e:
+        # return empty item and print error just in case
+        print(traceback.format_exc())
         return {}
 
     # return item
