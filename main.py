@@ -108,6 +108,14 @@ def now():
     This will update every time you request this endpoint
     """
     return get_packages(use_cache=False)
+
+@app.get('/clear')
+def clear():
+    """
+    Clear cache session
+    """
+    CACHE['home'] = ''
+    return 'OK'
 #}}}
 
 #{{{ get_packages
