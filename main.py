@@ -180,6 +180,7 @@ def transform_package(soup):
             'status4': 'distribution center',
             'status6': 'transit',
             'status5': 'available',
+            'status7': 'availableV2',
             }
 
     def get_first(arr):
@@ -210,7 +211,7 @@ def transform_package(soup):
             'weight': weight,
             'status': status,
             'statusLabel': status_label,
-            'statusFormatted': status_mapper[status],
+            'statusFormatted': status_mapper.get(status, 'na'),
             }
 #}}}
 

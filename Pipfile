@@ -16,3 +16,4 @@ python_version = "3.9"
 
 [scripts]
 dev = 'uvicorn main:app --reload'
+curl = 'curl localhost:8000'
